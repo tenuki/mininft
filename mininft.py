@@ -54,7 +54,7 @@ to_hex = lambda src: '0x' + (''.join('%02x' % x for x in src))
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
-@click.version_option(version='1.0.2')
+@click.version_option(version='1.0.3')
 def mininft():
     pass
 
@@ -64,7 +64,7 @@ def mininft():
 @click.argument('tokenid')
 @click.option('--token', default=_TOKEN, help='Nft token address')
 @click.option('--private_key', default=PRIVATE_KEY,
-              help='User account private key')
+              help='User account private key (or env. var PRIVATE_KEY)')
 @click.option('--node_url', default=_NODE_URL,
               help='Node url (defaults to env.var NODE_URL)')
 @click.option('--poa', is_flag=True, help='force use POA network middleware')

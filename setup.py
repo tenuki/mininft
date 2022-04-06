@@ -1,13 +1,13 @@
 from distutils.core import setup
 
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 
 setup(name='mininft',
       version=VERSION,
       description='Mini nft transfer helper',
-      author='dave',
+      author='tenuki',
       author_email='dave@endlesstruction.com.ar',
-      url='https://example.com/mininft',
+      url='https://github.com/tenuki/mininft',
       py_modules=['mininft'],
       install_requires=[
           'Click',
