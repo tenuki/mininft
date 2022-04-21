@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 
 import click
@@ -92,7 +93,11 @@ ABI_712 = [
 ]
 
 
-def Hide(x):
+class Terminate(Exception):
+    pass
+
+
+def hide(x):
     if len(x) > 6:
         return x[:3] + ' ... ' + x[-3:]
     return '*****'
@@ -102,8 +107,10 @@ to_hex = lambda src: '0x' + (''.join('%02x' % x for x in src))
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
-@click.version_option(version='1.0.4')
+@click.version_option(version='1.0.5')
 def mininft():
+    # this is a placeholder for common configurations for different actions..
+    # currently there's only one..
     pass
 
 
@@ -115,8 +122,11 @@ def mininft():
               help='User account private key (or env. var PRIVATE_KEY)')
 @click.option('--node_url', default=_NODE_URL,
               help='Node url (defaults to env.var NODE_URL)')
+@click.option('--gas_price',
+              help='gas price (eg:`10gwei`) default reads from network')
 @click.option('--poa', is_flag=True, help='force use POA network middleware')
-def send(destination, tokenid, token, private_key, node_url, poa):
+def send(destination, tokenid, token, private_key, node_url, poa,
+         _gas_price=None):
     click.echo("Node: %r" % node_url)
     click.echo("Token: %r" % token)
 
@@ -124,7 +134,7 @@ def send(destination, tokenid, token, private_key, node_url, poa):
         print('Private key is required. Please specify in arguments or env.',
               file=sys.stderr)
         exit(-1)
-    click.echo("Private key: %r" % (Hide(private_key)))
+    click.echo("Private key: %r" % (hide(private_key)))
 
     chain_id = None
     if not poa:
@@ -136,24 +146,33 @@ def send(destination, tokenid, token, private_key, node_url, poa):
     contract_instance = w3.eth.contract(address=token, abi=ABI_712)
 
     acc = w3.eth.account.from_key(private_key)
-
     click.echo("Account: %r" % acc.address)
     balance = w3.eth.getBalance(acc.address)
     click.echo("Balance for %r: %d" % (acc.address, balance))
+
+    # gas price handling
+    if _gas_price is None:
+        # take from network
+        gas_price = w3.eth.gasPrice
+    else:
+        magnitud_unidad = re.compile("^([0-9]*)([a-zA-Z]*)$")
+        m = magnitud_unidad.match(_gas_price)
+        if m:
+            g = m.groups()
+            gas_price = w3.toWei(g[0], g[1])
+        else:
+            raise Terminate("Failed to extract gas price from: %r" % _gas_price)
+    click.echo("Gas price: %d" % gas_price)
+
     try:
         if chain_id is None:
             chain_id = w3.eth.chain_id
 
-        tx = contract_instance.functions.transferFrom(acc.address,
-                                                               destination,
-                                                               int(tokenid),
-        ).buildTransaction({
+        tx = contract_instance.functions.transferFrom(acc.address, destination,
+                                            int(tokenid) ).buildTransaction({
             'from': acc.address,
             'chainId': chain_id,
-            'gas': 70000,
-            'gasPrice':  w3.toWei('10', 'gwei'),
-            # 'maxFeePerGas': w3.toWei('2', 'gwei'),
-            # 'maxPriorityFeePerGas': w3.toWei('1', 'gwei'),
+            'gasPrice':  gas_price,
             'nonce': w3.eth.getTransactionCount(acc.address),
         })
         signed_txn: SignedTransaction = w3.eth.account.sign_transaction(tx,
