@@ -107,7 +107,7 @@ to_hex = lambda src: '0x' + (''.join('%02x' % x for x in src))
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
-@click.version_option(version='1.0.5')
+@click.version_option(version='1.0.6')
 def mininft():
     # this is a placeholder for common configurations for different actions..
     # currently there's only one..
@@ -126,7 +126,7 @@ def mininft():
               help='gas price (eg:`10gwei`) default reads from network')
 @click.option('--poa', is_flag=True, help='force use POA network middleware')
 def send(destination, tokenid, token, private_key, node_url, poa,
-         _gas_price=None):
+         gas_price=None):
     click.echo("Node: %r" % node_url)
     click.echo("Token: %r" % token)
 
@@ -151,18 +151,18 @@ def send(destination, tokenid, token, private_key, node_url, poa,
     click.echo("Balance for %r: %d" % (acc.address, balance))
 
     # gas price handling
-    if _gas_price is None:
+    if gas_price is None:
         # take from network
-        gas_price = w3.eth.gasPrice
+        _gas_price = w3.eth.gasPrice
     else:
         magnitud_unidad = re.compile("^([0-9]*)([a-zA-Z]*)$")
-        m = magnitud_unidad.match(_gas_price)
+        m = magnitud_unidad.match(gas_price)
         if m:
             g = m.groups()
-            gas_price = w3.toWei(g[0], g[1])
+            _gas_price = w3.toWei(g[0], g[1])
         else:
-            raise Terminate("Failed to extract gas price from: %r" % _gas_price)
-    click.echo("Gas price: %d" % gas_price)
+            raise Terminate("Failed to extract gas price from: %r" % gas_price)
+    click.echo("Gas price: %d" % _gas_price)
 
     try:
         if chain_id is None:
@@ -172,7 +172,7 @@ def send(destination, tokenid, token, private_key, node_url, poa,
                                             int(tokenid) ).buildTransaction({
             'from': acc.address,
             'chainId': chain_id,
-            'gasPrice':  gas_price,
+            'gasPrice': _gas_price,
             'nonce': w3.eth.getTransactionCount(acc.address),
         })
         signed_txn: SignedTransaction = w3.eth.account.sign_transaction(tx,
